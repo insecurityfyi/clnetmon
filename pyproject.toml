@@ -13,6 +13,7 @@ dependencies = [
     "httpx>=0.27",
     "asyncpg>=0.29",
     "pydantic-settings>=2.2",
+    "pysnmp>=7.1,<8",
 ]
 
 [project.optional-dependencies]

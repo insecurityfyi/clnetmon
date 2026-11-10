@@ -131,7 +131,7 @@ async def test_integration_fallback_when_legacy_missing():
 async def pool():
     p = await db.create_pool(DSN)
     await p.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public")
-    assert await db.migrate(p) == ["001_init.sql"]
+    assert await db.migrate(p) == ["001_init.sql", "002_snmp.sql"]
     assert await db.migrate(p) == []            # idempotent
     yield p
     await p.close()

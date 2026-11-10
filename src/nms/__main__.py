@@ -1,4 +1,4 @@
-"""Command line: nms serve | migrate | collect-once | check-unifi"""
+"""Command line: nms serve | migrate | collect-once | check-unifi | check-snmp"""
 from __future__ import annotations
 
 import argparse
@@ -48,6 +48,42 @@ async def _check_unifi() -> int:
     return 1 if failures else 0
 
 
+async def _check_snmp() -> int:
+    """Probe the static targets and sweep the discovery ranges; print who answers.
+    Writes nothing to the database."""
+    from .integrations.snmp.collector import SnmpCollector
+    s = get_settings()
+    if not s.snmp_enabled:
+        sys.exit("SNMP is not configured: set NMS_SNMP_COMMUNITIES and NMS_SNMP_TARGETS "
+                 "and/or NMS_SNMP_DISCOVERY")
+    col = SnmpCollector(s.snmp_community_list, s._list(s.snmp_targets),
+                        s._list(s.snmp_discovery), timeout=s.snmp_timeout)
+    pool = None
+    if any(e.lower() == "auto" for e in col.discovery):
+        try:
+            pool = await db.create_pool(s.database_url)
+        except Exception as e:
+            print(f"note: cannot read learned subnets for 'auto' ({e})")
+    try:
+        swept, warnings = await col.discovery_hosts(pool)
+        for w in warnings:
+            print("note:", w)
+        hosts = list(dict.fromkeys(col.static + swept))
+        print(f"probing {len(hosts)} address(es) with {len(col.communities)} community string(s)...")
+        found = await col.sweep(hosts)
+        for h in hosts:
+            if h in found:
+                print(f"ok    {h:<18} {found[h][1] or ''}")
+            elif h in col.static:
+                print(f"FAIL  {h:<18} no answer")
+        print(f"{len(found)} device(s) answered")
+        return 0 if all(h in found for h in col.static) else 1
+    finally:
+        await col.aclose()
+        if pool is not None:
+            await pool.close()
+
+
 async def _collect_once() -> int:
     from . import scheduler
     settings = get_settings()
@@ -61,7 +97,7 @@ async def _collect_once() -> int:
                 "SELECT ok, counts, warnings, error FROM collector_runs WHERE src = $1 "
                 "ORDER BY id DESC LIMIT 1", collector.name)
             print(collector.name, json.dumps(dict(row), default=str))
-            await collector.client.aclose()
+            await collector.aclose()
         return 0 if ok else 1
     finally:
         await pool.close()
@@ -79,7 +115,7 @@ async def _migrate() -> int:
 
 def main() -> None:
     p = argparse.ArgumentParser(prog="nms")
-    p.add_argument("command", choices=("serve", "migrate", "collect-once", "check-unifi"))
+    p.add_argument("command", choices=("serve", "migrate", "collect-once", "check-unifi", "check-snmp"))
     cmd = p.parse_args().command
     if cmd == "serve":
         import uvicorn
@@ -87,7 +123,7 @@ def main() -> None:
         uvicorn.run("nms.main:app", host=s.api_host, port=s.api_port, log_config=None)
         return
     sys.exit(asyncio.run({"migrate": _migrate, "collect-once": _collect_once,
-                          "check-unifi": _check_unifi}[cmd]()))
+                          "check-unifi": _check_unifi, "check-snmp": _check_snmp}[cmd]()))
 
 
 if __name__ == "__main__":

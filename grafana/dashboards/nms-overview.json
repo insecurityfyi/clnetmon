@@ -3,10 +3,11 @@
   "title": "NMS overview",
   "tags": [
     "nms",
-    "unifi"
+    "unifi",
+    "snmp"
   ],
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "editable": true,
   "refresh": "1m",
   "time": {
@@ -89,7 +90,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT count(*) FROM devices WHERE state = 'online'"
+          "rawSql": "SELECT count(*) FROM topology_devices WHERE state = 'online'"
         }
       ],
       "options": {
@@ -128,7 +129,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT count(*) FROM devices WHERE state IS DISTINCT FROM 'online'"
+          "rawSql": "SELECT count(*) FROM topology_devices WHERE state IS DISTINCT FROM 'online'"
         }
       ],
       "options": {
@@ -362,7 +363,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "time_series",
-          "rawSql": "SELECT $__timeGroup(m.time, $__interval) AS time, COALESCE(d.name, m.ap_mac) AS metric, count(DISTINCT m.mac) AS value FROM client_metrics m LEFT JOIN devices d ON d.mac = m.ap_mac WHERE $__timeFilter(m.time) AND m.ap_mac IS NOT NULL GROUP BY 1, 2 ORDER BY 1"
+          "rawSql": "SELECT $__timeGroup(m.time, $__interval) AS time, COALESCE(d.name, m.ap_mac) AS metric, count(DISTINCT m.mac) AS value FROM client_metrics m LEFT JOIN topology_devices d ON d.mac = m.ap_mac WHERE $__timeFilter(m.time) AND m.ap_mac IS NOT NULL GROUP BY 1, 2 ORDER BY 1"
         }
       ],
       "fieldConfig": {
@@ -411,7 +412,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "time_series",
-          "rawSql": "SELECT $__timeGroup(r.time, $__interval) AS time, COALESCE(d.name, r.device_mac) || ' ' || COALESCE(r.band, r.radio) || ' GHz' AS metric, avg(r.util_total) AS value FROM radio_metrics r LEFT JOIN devices d ON d.mac = r.device_mac WHERE $__timeFilter(r.time) GROUP BY 1, 2 ORDER BY 1"
+          "rawSql": "SELECT $__timeGroup(r.time, $__interval) AS time, COALESCE(d.name, r.device_mac) || ' ' || COALESCE(r.band, r.radio) || ' GHz' AS metric, avg(r.util_total) AS value FROM radio_metrics r LEFT JOIN topology_devices d ON d.mac = r.device_mac WHERE $__timeFilter(r.time) GROUP BY 1, 2 ORDER BY 1"
         }
       ],
       "fieldConfig": {
@@ -463,7 +464,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT c.display_name AS \"Client\", c.ip AS \"IP\", c.mac AS \"MAC\", CASE WHEN c.is_wired THEN 'wired' ELSE c.essid END AS \"SSID\", COALESCE(d.name, c.ap_mac, c.sw_mac) AS \"Connected to\", c.sw_port AS \"Port\", m.band AS \"Band\", m.channel AS \"Ch\", m.signal_dbm AS \"Signal dBm\", m.rx_rate_kbps / 1000 AS \"Rx Mb/s\", m.tx_rate_kbps / 1000 AS \"Tx Mb/s\", m.satisfaction AS \"Experience\", c.network AS \"Network\", c.oui AS \"Vendor\" FROM clients c LEFT JOIN devices d ON d.mac = COALESCE(c.ap_mac, c.sw_mac) LEFT JOIN LATERAL (SELECT * FROM client_metrics m WHERE m.mac = c.mac AND m.time > now() - interval '10 minutes' ORDER BY time DESC LIMIT 1) m ON true WHERE c.connected ORDER BY m.signal_dbm NULLS LAST"
+          "rawSql": "SELECT c.display_name AS \"Client\", c.ip AS \"IP\", c.mac AS \"MAC\", CASE WHEN c.is_wired THEN 'wired' ELSE c.essid END AS \"SSID\", COALESCE(d.name, c.ap_mac, c.sw_mac) AS \"Connected to\", c.sw_port AS \"Port\", m.band AS \"Band\", m.channel AS \"Ch\", m.signal_dbm AS \"Signal dBm\", m.rx_rate_kbps / 1000 AS \"Rx Mb/s\", m.tx_rate_kbps / 1000 AS \"Tx Mb/s\", m.satisfaction AS \"Experience\", c.network AS \"Network\", c.oui AS \"Vendor\" FROM clients c LEFT JOIN topology_devices d ON d.mac = COALESCE(c.ap_mac, c.sw_mac) LEFT JOIN LATERAL (SELECT * FROM client_metrics m WHERE m.mac = c.mac AND m.time > now() - interval '10 minutes' ORDER BY time DESC LIMIT 1) m ON true WHERE c.connected ORDER BY m.signal_dbm NULLS LAST"
         }
       ],
       "options": {
@@ -497,7 +498,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT d.name AS \"Device\", d.model AS \"Model\", d.ip AS \"IP\", d.state AS \"State\", d.version AS \"Firmware\", d.upgradable AS \"Update available\", m.cpu_pct AS \"CPU %\", m.mem_pct AS \"Mem %\", m.num_clients AS \"Clients\", round(d.uptime_s / 86400.0, 1) AS \"Uptime days\" FROM devices d LEFT JOIN LATERAL (SELECT * FROM device_metrics m WHERE m.mac = d.mac ORDER BY time DESC LIMIT 1) m ON true ORDER BY d.name"
+          "rawSql": "SELECT d.name AS \"Device\", d.type AS \"Type\", left(d.model, 40) AS \"Model\", d.ip AS \"IP\", d.state AS \"State\", d.version AS \"Firmware\", m.cpu_pct AS \"CPU %\", m.mem_pct AS \"Mem %\", m.num_clients AS \"Clients\", round(d.uptime_s / 86400.0, 1) AS \"Uptime days\", (SELECT string_agg(x.src, '+' ORDER BY x.src) FROM devices x WHERE x.mac = d.mac) AS \"Source\" FROM topology_devices d LEFT JOIN LATERAL (SELECT * FROM device_metrics m WHERE m.mac = d.mac AND m.cpu_pct IS NOT NULL ORDER BY time DESC LIMIT 1) m ON true ORDER BY d.name"
         }
       ]
     },
@@ -525,7 +526,63 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT r.prefix AS \"Prefix\", r.protocol AS \"Type\", NULLIF(r.next_hop, '') AS \"Next hop\", r.interface AS \"Interface\", n.name AS \"Network\", n.vlan AS \"VLAN\" FROM routes r LEFT JOIN networks n ON n.subnet = r.prefix WHERE r.last_seen > now() - interval '15 minutes' ORDER BY r.prefix"
+          "rawSql": "SELECT d.name AS \"Router\", r.prefix AS \"Prefix\", r.protocol AS \"Type\", NULLIF(r.next_hop, '') AS \"Next hop\", r.interface AS \"Interface\", n.name AS \"Network\", n.vlan AS \"VLAN\" FROM routes r LEFT JOIN networks n ON n.subnet = r.prefix LEFT JOIN topology_devices d ON d.mac = r.device_mac WHERE r.last_seen > now() - interval '15 minutes' ORDER BY d.name, r.prefix"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Printers",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 46,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT d.name AS \"Printer\", d.ip AS \"IP\", d.state AS \"State\", d.raw->'printer'->>'status' AS \"Status\", s.name AS \"Supply\", s.level_pct AS \"Level %\", (d.raw->'printer'->>'page_count')::bigint AS \"Pages printed\" FROM devices d LEFT JOIN LATERAL (SELECT DISTINCT ON (name) name, level_pct FROM printer_supplies p WHERE p.device_mac = d.mac AND p.time > now() - interval '1 day' ORDER BY name, time DESC) s ON true WHERE d.type = 'printer' ORDER BY d.name, s.name"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "SNMP targets (static and discovered)",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 46,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT t.host AS \"Address\", t.sys_name AS \"Name\", d.type AS \"Type\", t.origin AS \"Found by\", CASE WHEN t.alias_of IS NOT NULL THEN 'same device as ' || t.alias_of WHEN t.community_ref IS NULL THEN 'no answer' WHEN t.last_error IS NOT NULL THEN 'failing' ELSE 'ok' END AS \"Status\", t.last_ok AS \"Last answered\", t.last_error AS \"Last error\" FROM snmp_targets t LEFT JOIN devices d ON d.src = 'snmp' AND d.mac = t.device_mac ORDER BY t.host"
         }
       ]
     }

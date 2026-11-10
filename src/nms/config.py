@@ -20,11 +20,32 @@ class Settings(BaseSettings):
     unifi_password: str = ""
     unifi_interval: int = 60
 
+    # SNMP (v2c). Lists are comma- or space-separated.
+    snmp_communities: str = ""        # tried in order; first that answers is remembered
+    snmp_targets: str = ""            # hosts/IPs always polled
+    snmp_discovery: str = ""          # CIDRs to sweep, and/or "auto" (subnets learned from UniFi)
+    snmp_interval: int = 120
+    snmp_discovery_interval: int = 3600
+    snmp_timeout: float = 2.0
+
     retention_days: int = 90
 
     @property
     def unifi_enabled(self) -> bool:
         return bool(self.unifi_url and (self.unifi_api_key or self.unifi_username))
+
+    @staticmethod
+    def _list(v: str) -> list[str]:
+        return [x for x in v.replace(",", " ").split() if x]
+
+    @property
+    def snmp_community_list(self) -> list[str]:
+        return self._list(self.snmp_communities)
+
+    @property
+    def snmp_enabled(self) -> bool:
+        return bool(self.snmp_community_list
+                    and (self._list(self.snmp_targets) or self._list(self.snmp_discovery)))
 
 
 @lru_cache

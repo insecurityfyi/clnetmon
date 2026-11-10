@@ -51,7 +51,7 @@ async def devices(request: Request):
     return await _rows(request, f"""
         SELECT {_DEVICE_COLS}, m.cpu_pct, m.mem_pct, m.temperature, m.num_clients, m.satisfaction
         FROM devices d
-        LEFT JOIN LATERAL (SELECT * FROM device_metrics m WHERE m.mac = d.mac
+        LEFT JOIN LATERAL (SELECT * FROM device_metrics m WHERE m.mac = d.mac AND m.src = d.src
                            ORDER BY time DESC LIMIT 1) m ON true
         ORDER BY d.name""")
 
@@ -59,16 +59,19 @@ async def devices(request: Request):
 @router.get("/devices/{mac}")
 async def device(request: Request, mac: str):
     mac = mac.lower()
-    rows = await _rows(request, "SELECT * FROM devices WHERE mac = $1", mac)
+    rows = await _rows(request, "SELECT * FROM devices WHERE mac = $1 "
+                                "ORDER BY (src = 'unifi') DESC", mac)
     if not rows:
         raise HTTPException(404, "device not found")
     out = rows[0]
+    out["sources"] = [r["src"] for r in rows]
     out["radios"] = await _rows(request, """
         SELECT DISTINCT ON (radio) * FROM radio_metrics WHERE device_mac = $1
         ORDER BY radio, time DESC""", mac)
     out["ports"] = await _rows(request, """
-        SELECT DISTINCT ON (port_idx) * FROM port_metrics WHERE device_mac = $1
-        ORDER BY port_idx, time DESC""", mac)
+        SELECT DISTINCT ON (src, port_idx) * FROM port_metrics
+        WHERE device_mac = $1 AND time > now() - interval '1 day'
+        ORDER BY src, port_idx, time DESC""", mac)
     return out
 
 
@@ -109,7 +112,7 @@ async def radios(request: Request):
     """Latest sample for every AP radio."""
     return await _rows(request, """
         SELECT DISTINCT ON (r.device_mac, r.radio) d.name AS device_name, r.*
-        FROM radio_metrics r JOIN devices d ON d.mac = r.device_mac
+        FROM radio_metrics r JOIN topology_devices d ON d.mac = r.device_mac
         WHERE r.time > now() - interval '15 minutes'
         ORDER BY r.device_mac, r.radio, r.time DESC""")
 
@@ -134,8 +137,59 @@ async def networks(request: Request):
 async def routes(request: Request):
     return await _rows(request, """
         SELECT r.*, d.name AS device_name FROM routes r
-        LEFT JOIN devices d ON d.mac = r.device_mac
+        LEFT JOIN topology_devices d ON d.mac = r.device_mac
         WHERE r.last_seen > now() - interval '15 minutes' ORDER BY r.prefix""")
+
+
+@router.get("/snmp/targets")
+async def snmp_targets(request: Request):
+    """Every SNMP target, static or discovered, with its last result."""
+    return await _rows(request, """
+        SELECT host, origin, community_ref IS NOT NULL AS responding, device_mac, alias_of,
+               sys_name, first_seen, last_ok, last_error
+        FROM snmp_targets ORDER BY host""")
+
+
+@router.get("/printers")
+async def printers(request: Request):
+    out = await _rows(request, """
+        SELECT d.mac, d.name, d.model, d.ip, d.state, d.raw->'printer'->>'status' AS status,
+               (d.raw->'printer'->>'page_count')::bigint AS page_count,
+               d.raw->'printer'->>'display' AS display
+        FROM devices d WHERE d.type = 'printer' ORDER BY d.name""")
+    for p in out:
+        p["supplies"] = await _rows(request, """
+            SELECT DISTINCT ON (name) name, level_pct, level, max_capacity, time
+            FROM printer_supplies WHERE device_mac = $1 AND time > now() - interval '1 day'
+            ORDER BY name, time DESC""", p["mac"])
+    return out
+
+
+@router.get("/locate")
+async def locate(request: Request,
+                 q: str = Query(..., min_length=2, description="MAC, IP or part of a name")):
+    """Where is this host? Combines UniFi client data with ARP and switch MAC tables."""
+    q = q.strip().lower()
+    arp = await _rows(request, """
+        SELECT a.ip, a.mac, a.interface, d.name AS seen_by, a.last_seen
+        FROM arp_entries a LEFT JOIN topology_devices d ON d.mac = a.device_mac
+        WHERE a.ip = $1 OR a.mac = $1 ORDER BY a.last_seen DESC""", q)
+    macs = sorted({r["mac"] for r in arp} | ({q} if q.count(":") == 5 else set()))
+    clients = await _rows(request, f"""
+        SELECT {_CLIENT_COLS} FROM clients c
+        WHERE c.mac = ANY($1::text[]) OR c.ip = $2
+           OR concat_ws(' ', c.display_name, c.hostname, c.identity) ILIKE '%' || $2 || '%'
+        ORDER BY c.connected DESC LIMIT 25""", macs, q)
+    macs = sorted(set(macs) | {c["mac"] for c in clients})
+    # the access port is the one that has learned the fewest addresses
+    ports = await _rows(request, """
+        SELECT f.mac, d.name AS switch, f.device_mac AS switch_mac, f.port_name, f.vlan,
+               f.last_seen,
+               (SELECT count(DISTINCT x.mac) FROM fdb_entries x
+                WHERE x.device_mac = f.device_mac AND x.port_idx = f.port_idx) AS macs_on_port
+        FROM fdb_entries f LEFT JOIN topology_devices d ON d.mac = f.device_mac
+        WHERE f.mac = ANY($1::text[]) ORDER BY macs_on_port, f.last_seen DESC""", macs)
+    return {"query": q, "clients": clients, "arp": arp, "switch_ports": ports}
 
 
 @router.get("/topology")

@@ -4,7 +4,8 @@ Aggregates network and user data from multiple sources into PostgreSQL, serves i
 REST API, and feeds Grafana dashboards, including a network map rebuilt from collected
 neighbor and routing data on every poll.
 
-Integrations so far: **UniFi** (UniFi OS console, read-only).
+Integrations so far: **UniFi** (UniFi OS console) and **SNMP** (v2c, any vendor, with
+discovery). Both are read-only.
 
 ## How it fits together
 
@@ -39,16 +40,63 @@ back to a session login. If the legacy API is unavailable altogether, the collec
 degrades to the official Integration API (inventory and attachment only) and records a
 warning. The collector only issues GET requests.
 
-SNMP is not used: for UniFi gear the API is a superset of what SNMPv2 exposes. It is the
-planned route for non-UniFi devices.
+## What the SNMP integration collects
+
+Standard MIBs only, so switches, firewalls, routers, printers and UniFi devices with SNMP
+enabled all produce the same shape of data.
+
+| Data | MIB | Tables |
+|---|---|---|
+| Name, description, uptime, location | MIB-II system | `devices` (`src = 'snmp'`) |
+| Interfaces: status, speed, description, bytes, errors, discards | IF-MIB | `port_metrics` |
+| LLDP neighbors | LLDP-MIB | `topology_links` |
+| Routing table (IPv4) | IP-FORWARD-MIB, MIB-II | `routes` |
+| ARP table (IP to MAC) | MIB-II / IP-MIB | `arp_entries` |
+| Switch MAC table (MAC to port, per VLAN) | Q-BRIDGE / BRIDGE-MIB | `fdb_entries` |
+| CPU and memory | HOST-RESOURCES-MIB | `device_metrics` |
+| Printer status, page count, toner and other supply levels | Printer-MIB | `printer_metrics`, `printer_supplies` |
+
+A device is typed automatically: `printer` if it answers the Printer-MIB, `firewall` or
+`router` if it forwards IP (firewall when its description names a known firewall product),
+`switch` if it has a MAC table, otherwise `host`. Vendor-specific data (firewall session
+counts, VPN tunnels, PoE budgets) is not collected yet.
+
+A device seen by both UniFi and SNMP is recognised by its MAC and shown once on the map.
+
+### Configure
+
+In `/etc/nms/nms.env`:
+
+```
+NMS_SNMP_COMMUNITIES=myreadonlystring           # several allowed; tried in order
+NMS_SNMP_TARGETS=192.168.7.1, 192.168.7.60      # always polled
+NMS_SNMP_DISCOVERY=192.168.7.0/24, auto         # swept for anything that answers
+```
+
+**Discovery** sends one SNMP request per community string to every address in the listed
+networks (hourly, and at start). Whatever answers becomes a target and is polled from
+then on. `auto` adds every subnet learned from the UniFi controller. Networks larger
+than a /22 are refused. Enable SNMP v2c with a read-only community on each device first,
+and allow UDP 161 from the NMS server.
+
+```
+sudo -u nms bash -c 'set -a; . /etc/nms/nms.env; /opt/nms/.venv/bin/nms check-snmp'
+```
+
+shows what answers, without storing anything. Then `sudo systemctl restart nms`.
+
+`GET /api/v1/snmp/targets` lists every target with its last result, `/api/v1/printers`
+the printers and supplies, and `/api/v1/locate?q=<ip, mac or name>` says where a host is
+by combining UniFi client data with ARP and switch MAC tables.
 
 ## Network map
 
 `topology_nodes` and `topology_edges` are SQL views over the latest collected data:
 
 * UniFi devices, joined by controller-reported uplinks (wired or wireless mesh)
-* neighbors heard over LLDP, including third-party gear the controller does not manage
-* routed prefixes from the gateway routing table, labelled with the matching network/VLAN
+* SNMP-polled switches, firewalls, routers and printers
+* neighbors heard over LLDP (from UniFi and SNMP), including gear nothing manages
+* routed prefixes from each router's routing table, labelled with the matching network/VLAN
 * optionally, every connected client on its AP or switch port
 
 Links not seen for 15 minutes drop off the map. Read it at `GET /api/v1/topology`

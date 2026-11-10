@@ -9,11 +9,13 @@ import asyncpg
 
 from .config import Settings
 from .integrations.unifi.client import UnifiClient
+from .integrations.snmp.collector import SnmpCollector
 from .integrations.unifi.collector import UnifiCollector
 
 log = logging.getLogger(__name__)
 
-METRIC_TABLES = ("device_metrics", "radio_metrics", "port_metrics", "client_metrics")
+METRIC_TABLES = ("device_metrics", "radio_metrics", "port_metrics", "client_metrics",
+                 "printer_metrics", "printer_supplies")
 
 
 def build_collectors(settings: Settings) -> list:
@@ -25,6 +27,12 @@ def build_collectors(settings: Settings) -> list:
                 settings.unifi_verify_tls, settings.unifi_username, settings.unifi_password,
             ),
             interval=settings.unifi_interval,
+        ))
+    if settings.snmp_enabled:
+        collectors.append(SnmpCollector(
+            settings.snmp_community_list, settings._list(settings.snmp_targets),
+            settings._list(settings.snmp_discovery), interval=settings.snmp_interval,
+            discovery_interval=settings.snmp_discovery_interval, timeout=settings.snmp_timeout,
         ))
     return collectors
 
@@ -72,7 +80,7 @@ async def _retention(pool: asyncpg.Pool, days: int) -> None:
 def start(pool: asyncpg.Pool, settings: Settings) -> list[asyncio.Task]:
     collectors = build_collectors(settings)
     if not collectors:
-        log.warning("no collectors enabled; set NMS_UNIFI_URL and NMS_UNIFI_API_KEY")
+        log.warning("no collectors enabled; configure UniFi and/or SNMP in the env file")
     tasks = [asyncio.create_task(_loop(pool, c), name=f"collector-{c.name}") for c in collectors]
     tasks.append(asyncio.create_task(_retention(pool, settings.retention_days), name="retention"))
     return tasks

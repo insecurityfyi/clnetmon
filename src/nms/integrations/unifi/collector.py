@@ -37,6 +37,9 @@ class UnifiCollector:
         self._known_every = known_every
         self._cycle = 0
 
+    async def aclose(self) -> None:
+        await self.client.aclose()
+
     async def _optional(self, path: str, warnings: list[str]) -> list[dict[str, Any]]:
         try:
             return await self.client.legacy(path)
