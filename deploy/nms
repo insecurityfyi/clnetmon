@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# "nms <command>" from any shell: runs the NMS command line as the service user with the
+# server's settings (/etc/nms/nms.env). Installed on the PATH as /usr/bin/nms.
+#   nms check-unifi | check-snmp | collect-once | migrate
+BIN=/opt/nms/.venv/bin/nms
+if [[ "$(id -un)" == "nms" ]]; then
+    exec "$BIN" "$@"
+elif [[ $EUID -eq 0 ]]; then
+    exec runuser -u nms -- "$BIN" "$@"
+else
+    exec sudo -u nms "$BIN" "$@"
+fi

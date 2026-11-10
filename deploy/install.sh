@@ -103,6 +103,7 @@ install -m 644 "$APP_DIR/deploy/nms.service" "$APP_DIR/deploy/nms-update.service
 systemctl daemon-reload
 systemctl enable --now nms.service nms-update.timer
 ln -sfn "$APP_DIR/deploy/nmsupdate" /usr/bin/nmsupdate
+ln -sfn "$APP_DIR/deploy/nms" /usr/bin/nms
 
 echo "==> Grafana"
 cat > /etc/grafana/provisioning/datasources/nms.yaml <<EOF
@@ -150,7 +151,7 @@ Done. To pull and deploy the latest code at any time, run:  nmsupdate
 Next:
   1. Edit $ETC_DIR/nms.env  -> set NMS_UNIFI_URL and NMS_UNIFI_API_KEY
   2. Check the console answers:
-       sudo -u nms bash -c 'set -a; . $ETC_DIR/nms.env; $APP_DIR/.venv/bin/nms check-unifi'
+       nms check-unifi
   3. sudo systemctl restart nms && journalctl -u nms -f
   4. Grafana: http://$(hostname -I | awk '{print $1}'):3000  (first login admin / admin, then change it)
 EOF

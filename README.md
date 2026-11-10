@@ -80,7 +80,7 @@ than a /22 are refused. Enable SNMP v2c with a read-only community on each devic
 and allow UDP 161 from the NMS server.
 
 ```
-sudo -u nms bash -c 'set -a; . /etc/nms/nms.env; /opt/nms/.venv/bin/nms check-snmp'
+nms check-snmp
 ```
 
 shows what answers, without storing anything. Then `sudo systemctl restart nms`.
@@ -129,8 +129,7 @@ PostgreSQL 16 and Grafana and enables the services. Afterwards:
 
 1. Create an API key on the console: Network > Settings > Control Plane > Integrations.
 2. Put the console URL and key in `/etc/nms/nms.env`.
-3. `sudo -u nms bash -c 'set -a; . /etc/nms/nms.env; /opt/nms/.venv/bin/nms check-unifi'`
-   reports which endpoints the console answers.
+3. `nms check-unifi` reports which endpoints the console answers.
 4. `sudo systemctl restart nms`, then open Grafana on port 3000.
 
 ## Operate

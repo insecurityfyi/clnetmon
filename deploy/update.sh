@@ -41,6 +41,7 @@ main() {
     done
     [[ $changed -eq 1 ]] && systemctl daemon-reload
     ln -sfn "$APP_DIR/deploy/nmsupdate" /usr/bin/nmsupdate
+    ln -sfn "$APP_DIR/deploy/nms" /usr/bin/nms
     rm -f /usr/local/bin/nmsupdate
 
     systemctl restart nms.service

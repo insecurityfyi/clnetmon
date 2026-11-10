@@ -4,7 +4,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="NMS_", env_file=".env", extra="ignore")
+    # The server's settings file is read directly, so commands work without sourcing it
+    # in a shell (values may contain spaces, e.g. "192.168.7.0/24, auto").
+    model_config = SettingsConfigDict(env_prefix="NMS_", env_file=("/etc/nms/nms.env", ".env"),
+                                      extra="ignore")
 
     database_url: str = "postgresql:///nms?host=/var/run/postgresql"
 
