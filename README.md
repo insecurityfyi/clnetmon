@@ -103,6 +103,24 @@ Links not seen for 15 minutes drop off the map. Read it at `GET /api/v1/topology
 (`?include_clients=true`, `?include_routes=false`) or in Grafana's *NMS overview*
 dashboard (node-graph panel, with toggles for clients and routes).
 
+## Dashboards
+
+Three dashboards are provisioned into Grafana's *NMS* folder, linked to each other from
+the top bar:
+
+* **NMS overview**: network map, clients, wireless, routing, printers, SNMP targets.
+* **Devices and interfaces**: firewall and gateway interface traffic, every device with
+  CPU, memory and throughput, the busiest interfaces and those with errors. Click a device
+  name to open its detail page.
+* **Device detail**: one device's CPU and memory history, per-interface traffic in and
+  out, errors and discards, the full interface table with neighbors, LLDP neighbors,
+  routing table, attached hosts, Wi-Fi channel utilization and printer supplies.
+
+Interface rates (`rx_bps`, `tx_bps`, `errors_ps` in `port_metrics`) are computed when
+each sample is stored, from the previous sample of the same interface.
+
+The JSON files are generated: edit `tools/build_dashboards.py` and run it.
+
 ## Install on CentOS Stream 9
 
 The repo is private, so the server needs a deploy key before it can clone. Create it

@@ -194,6 +194,7 @@ class SnmpCollector:
                 for k, key in (("ports", "ports"), ("links", "links"), ("routes", "routes"),
                                ("arp", "arp"), ("fdb", "fdb")):
                     counts[k] += len(snap[key])
+            await db.compute_port_rates(conn, self.name, now)
             for table in ("topology_links", "routes", "arp_entries", "fdb_entries"):
                 await conn.execute(
                     f"DELETE FROM {table} WHERE src = $1 AND last_seen < now() - interval '1 day'",

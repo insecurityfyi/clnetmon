@@ -106,6 +106,7 @@ class UnifiCollector:
             await db.insert_rows(conn, "device_metrics", snap["device_metrics"])
             await db.insert_rows(conn, "radio_metrics", snap["radio_metrics"])
             await db.insert_rows(conn, "port_metrics", snap["port_metrics"])
+            await db.compute_port_rates(conn, self.name, snap["now"])
 
             await conn.execute(
                 "UPDATE clients SET connected = false WHERE src = $1 AND site = $2 AND connected",

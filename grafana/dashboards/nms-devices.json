@@ -1,0 +1,454 @@
+{
+  "uid": "nms-devices",
+  "title": "Devices and interfaces",
+  "tags": [
+    "nms"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "links": [
+    {
+      "type": "dashboards",
+      "tags": [
+        "nms"
+      ],
+      "asDropdown": false,
+      "title": "NMS",
+      "includeVars": false,
+      "keepTime": true,
+      "icon": "external link"
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Firewall and gateway interfaces: traffic in",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT p.time, COALESCE(d.name, p.device_mac) || ' ' || p.name || COALESCE(' (' || NULLIF(p.alias, '') || ')', '') AS metric, p.rx_bps AS value FROM port_metrics p JOIN device_port_src s ON s.mac = p.device_mac AND s.src = p.src JOIN topology_devices d ON d.mac = p.device_mac WHERE $__timeFilter(p.time) AND d.type IN ('firewall', 'router', 'ugw', 'udm', 'uxg') AND p.rx_bps IS NOT NULL AND EXISTS (SELECT 1 FROM port_latest l WHERE l.device_mac = p.device_mac AND l.port_idx = p.port_idx AND l.up AND COALESCE(l.rx_bps, 0) + COALESCE(l.tx_bps, 0) > 0) ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "bps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Firewall and gateway interfaces: traffic out",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT p.time, COALESCE(d.name, p.device_mac) || ' ' || p.name || COALESCE(' (' || NULLIF(p.alias, '') || ')', '') AS metric, p.tx_bps AS value FROM port_metrics p JOIN device_port_src s ON s.mac = p.device_mac AND s.src = p.src JOIN topology_devices d ON d.mac = p.device_mac WHERE $__timeFilter(p.time) AND d.type IN ('firewall', 'router', 'ugw', 'udm', 'uxg') AND p.tx_bps IS NOT NULL AND EXISTS (SELECT 1 FROM port_latest l WHERE l.device_mac = p.device_mac AND l.port_idx = p.port_idx AND l.up AND COALESCE(l.rx_bps, 0) + COALESCE(l.tx_bps, 0) > 0) ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "bps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Devices (click a name for full telemetry)",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT d.name AS \"Device\", d.mac AS \"MAC\", d.type AS \"Type\", left(d.model, 40) AS \"Model\", d.ip AS \"IP\", d.state AS \"State\", m.cpu_pct AS \"CPU\", m.mem_pct AS \"Memory\", t.up AS \"Ports up\", t.total AS \"Ports\", t.rx AS \"In\", t.tx AS \"Out\", d.uptime_s AS \"Uptime\" FROM topology_devices d LEFT JOIN LATERAL (SELECT cpu_pct, mem_pct FROM device_metrics m WHERE m.mac = d.mac AND m.cpu_pct IS NOT NULL AND m.time > now() - interval '15 minutes' ORDER BY time DESC LIMIT 1) m ON true LEFT JOIN LATERAL (SELECT count(*) FILTER (WHERE up) AS up, count(*) AS total, sum(rx_bps) AS rx, sum(tx_bps) AS tx FROM port_latest l WHERE l.device_mac = d.mac) t ON true ORDER BY (d.type IN ('firewall', 'router', 'ugw', 'udm', 'uxg')) DESC, d.type, d.name"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open device detail",
+                    "url": "/d/nms-device/device-detail?var-device=${__data.fields.MAC}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "MAC"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Memory"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "In"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bps"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Out"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bps"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Uptime"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dtdurations"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "title": "Busiest interfaces right now",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 14,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT d.name AS \"Device\", d.mac AS \"MAC\", l.name AS \"Interface\", NULLIF(l.alias, '') AS \"Description\", l.rx_bps AS \"In\", l.tx_bps AS \"Out\", l.speed_mbps AS \"Speed Mb\", round((100 * GREATEST(l.rx_bps, l.tx_bps) / NULLIF(l.speed_mbps * 1e6, 0))::numeric, 1) AS \"Utilization\" FROM port_latest l JOIN topology_devices d ON d.mac = l.device_mac WHERE l.up AND COALESCE(l.rx_bps, 0) + COALESCE(l.tx_bps, 0) > 0 ORDER BY COALESCE(l.rx_bps, 0) + COALESCE(l.tx_bps, 0) DESC LIMIT 25"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open device detail",
+                    "url": "/d/nms-device/device-detail?var-device=${__data.fields.MAC}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "MAC"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "In"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bps"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Out"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bps"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Utilization"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "title": "Interfaces with errors or discards",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 19,
+        "w": 10,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT d.name AS \"Device\", d.mac AS \"MAC\", l.name AS \"Interface\", l.errors_ps AS \"Per second\", COALESCE(l.rx_errors, 0) + COALESCE(l.tx_errors, 0) AS \"Errors total\", COALESCE(l.rx_dropped, 0) + COALESCE(l.tx_dropped, 0) AS \"Discards total\" FROM port_latest l JOIN topology_devices d ON d.mac = l.device_mac WHERE l.errors_ps > 0 ORDER BY l.errors_ps DESC LIMIT 25"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open device detail",
+                    "url": "/d/nms-device/device-detail?var-device=${__data.fields.MAC}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "MAC"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Per second"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

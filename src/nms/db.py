@@ -86,3 +86,26 @@ async def upsert_rows(
         ", ".join(f"{c} = {overrides.get(c, 'EXCLUDED.' + c)}" for c in updates),
     )
     await conn.executemany(sql, [tuple(r[c] for c in cols) for r in rows])
+
+
+async def compute_port_rates(conn: asyncpg.Connection, src: str, time) -> None:
+    """Fill rx_bps / tx_bps / errors_ps for the samples just stored at `time`, from the
+    previous sample of the same interface. A counter that went backwards (reset or
+    32-bit wrap) yields NULL for that interval instead of a bogus spike."""
+    await conn.execute("""
+        UPDATE port_metrics p SET (rx_bps, tx_bps, errors_ps) = (
+            SELECT CASE WHEN p.rx_bytes >= q.rx_bytes
+                        THEN (p.rx_bytes - q.rx_bytes) * 8 / EXTRACT(epoch FROM p.time - q.time) END,
+                   CASE WHEN p.tx_bytes >= q.tx_bytes
+                        THEN (p.tx_bytes - q.tx_bytes) * 8 / EXTRACT(epoch FROM p.time - q.time) END,
+                   CASE WHEN e.cur >= e.prev
+                        THEN (e.cur - e.prev) / EXTRACT(epoch FROM p.time - q.time) END
+            FROM port_metrics q,
+                 LATERAL (SELECT COALESCE(p.rx_errors, 0) + COALESCE(p.tx_errors, 0)
+                                 + COALESCE(p.rx_dropped, 0) + COALESCE(p.tx_dropped, 0) AS cur,
+                                 COALESCE(q.rx_errors, 0) + COALESCE(q.tx_errors, 0)
+                                 + COALESCE(q.rx_dropped, 0) + COALESCE(q.tx_dropped, 0) AS prev) e
+            WHERE q.src = p.src AND q.device_mac = p.device_mac AND q.port_idx = p.port_idx
+              AND q.time < p.time AND q.time > p.time - interval '15 minutes'
+            ORDER BY q.time DESC LIMIT 1)
+        WHERE p.src = $1 AND p.time = $2""", src, time)

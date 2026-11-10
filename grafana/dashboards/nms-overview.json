@@ -2,12 +2,10 @@
   "uid": "nms-overview",
   "title": "NMS overview",
   "tags": [
-    "nms",
-    "unifi",
-    "snmp"
+    "nms"
   ],
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "editable": true,
   "refresh": "1m",
   "time": {
@@ -15,6 +13,19 @@
     "to": "now"
   },
   "timezone": "browser",
+  "links": [
+    {
+      "type": "dashboards",
+      "tags": [
+        "nms"
+      ],
+      "asDropdown": false,
+      "title": "NMS",
+      "includeVars": false,
+      "keepTime": true,
+      "icon": "external link"
+    }
+  ],
   "templating": {
     "list": [
       {
@@ -498,9 +509,43 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT d.name AS \"Device\", d.type AS \"Type\", left(d.model, 40) AS \"Model\", d.ip AS \"IP\", d.state AS \"State\", d.version AS \"Firmware\", m.cpu_pct AS \"CPU %\", m.mem_pct AS \"Mem %\", m.num_clients AS \"Clients\", round(d.uptime_s / 86400.0, 1) AS \"Uptime days\", (SELECT string_agg(x.src, '+' ORDER BY x.src) FROM devices x WHERE x.mac = d.mac) AS \"Source\" FROM topology_devices d LEFT JOIN LATERAL (SELECT * FROM device_metrics m WHERE m.mac = d.mac AND m.cpu_pct IS NOT NULL ORDER BY time DESC LIMIT 1) m ON true ORDER BY d.name"
+          "rawSql": "SELECT d.name AS \"Device\", d.mac AS \"MAC\", d.type AS \"Type\", left(d.model, 40) AS \"Model\", d.ip AS \"IP\", d.state AS \"State\", d.version AS \"Firmware\", m.cpu_pct AS \"CPU %\", m.mem_pct AS \"Mem %\", m.num_clients AS \"Clients\", round(d.uptime_s / 86400.0, 1) AS \"Uptime days\", (SELECT string_agg(x.src, '+' ORDER BY x.src) FROM devices x WHERE x.mac = d.mac) AS \"Source\" FROM topology_devices d LEFT JOIN LATERAL (SELECT * FROM device_metrics m WHERE m.mac = d.mac AND m.cpu_pct IS NOT NULL ORDER BY time DESC LIMIT 1) m ON true ORDER BY d.name"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open device detail",
+                    "url": "/d/nms-device/device-detail?var-device=${__data.fields.MAC}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "MAC"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "id": 12,

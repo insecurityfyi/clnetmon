@@ -1,0 +1,928 @@
+{
+  "uid": "nms-device",
+  "title": "Device detail",
+  "tags": [
+    "nms"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "links": [
+    {
+      "type": "dashboards",
+      "tags": [
+        "nms"
+      ],
+      "asDropdown": false,
+      "title": "NMS",
+      "includeVars": false,
+      "keepTime": true,
+      "icon": "external link"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "device",
+        "label": "Device",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "nms-pg"
+        },
+        "refresh": 1,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "query": "SELECT COALESCE(name, mac) || COALESCE(' (' || ip || ')', '') AS __text, mac AS __value FROM topology_devices ORDER BY (type IN ('firewall', 'router', 'ugw', 'udm', 'uxg')) DESC, name"
+      },
+      {
+        "name": "interface",
+        "label": "Interfaces",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "nms-pg"
+        },
+        "refresh": 2,
+        "sort": 0,
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "query": "SELECT name FROM port_latest WHERE device_mac = '$device' AND (up OR COALESCE(rx_bps, 0) + COALESCE(tx_bps, 0) > 0) ORDER BY port_idx"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Device",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(name, mac) FROM topology_devices WHERE mac = '$device'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Type / address",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT concat_ws(' \u00b7 ', type, ip) FROM topology_devices WHERE mac = '$device'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 3,
+      "title": "State",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 0,
+        "w": 2,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT state FROM topology_devices WHERE mac = '$device'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Uptime",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT uptime_s FROM topology_devices WHERE mac = '$device'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dtdurations"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "title": "CPU",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT cpu_pct FROM device_metrics WHERE mac = '$device' AND cpu_pct IS NOT NULL AND time > now() - interval '15 minutes' ORDER BY time DESC LIMIT 1"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "Memory",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT mem_pct FROM device_metrics WHERE mac = '$device' AND mem_pct IS NOT NULL AND time > now() - interval '15 minutes' ORDER BY time DESC LIMIT 1"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "title": "Ports up",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 21,
+        "y": 0,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT count(*) FILTER (WHERE up) || ' / ' || count(*) FROM port_latest WHERE device_mac = '$device'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 8,
+      "title": "CPU and memory",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroup(time, $__interval) AS time, 'CPU' AS metric, avg(cpu_pct) AS value FROM device_metrics WHERE mac = '$device' AND $__timeFilter(time) AND cpu_pct IS NOT NULL GROUP BY 1 ORDER BY 1"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroup(time, $__interval) AS time, 'Memory' AS metric, avg(mem_pct) AS value FROM device_metrics WHERE mac = '$device' AND $__timeFilter(time) AND mem_pct IS NOT NULL GROUP BY 1 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Clients, temperature, experience",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroup(time, $__interval) AS time, avg(num_clients) AS \"Clients\", avg(temperature) AS \"Temperature C\", avg(satisfaction) AS \"Experience %\" FROM device_metrics WHERE mac = '$device' AND $__timeFilter(time) GROUP BY 1 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Interface traffic in",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT p.time, p.name || COALESCE(' (' || NULLIF(p.alias, '') || ')', '') AS metric, p.rx_bps AS value FROM port_metrics p JOIN device_port_src s ON s.mac = p.device_mac AND s.src = p.src WHERE p.device_mac = '$device' AND $__timeFilter(p.time) AND p.name IN ($interface) AND p.rx_bps IS NOT NULL ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "bps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Interface traffic out",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT p.time, p.name || COALESCE(' (' || NULLIF(p.alias, '') || ')', '') AS metric, p.tx_bps AS value FROM port_metrics p JOIN device_port_src s ON s.mac = p.device_mac AND s.src = p.src WHERE p.device_mac = '$device' AND $__timeFilter(p.time) AND p.name IN ($interface) AND p.tx_bps IS NOT NULL ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "bps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Interface errors and discards per second",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT p.time, p.name || COALESCE(' (' || NULLIF(p.alias, '') || ')', '') AS metric, p.errors_ps AS value FROM port_metrics p JOIN device_port_src s ON s.mac = p.device_mac AND s.src = p.src WHERE p.device_mac = '$device' AND $__timeFilter(p.time) AND p.name IN ($interface) AND p.errors_ps IS NOT NULL ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "none",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "Wi-Fi channel utilization (access points)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 21,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroup(time, $__interval) AS time, COALESCE(band, radio) || ' GHz ch ' || max(channel) AS metric, avg(util_total) AS value FROM radio_metrics WHERE device_mac = '$device' AND $__timeFilter(time) GROUP BY 1, band, radio ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Interfaces",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 24,
+        "h": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT l.port_idx AS \"#\", l.name AS \"Interface\", NULLIF(l.alias, '') AS \"Description\", CASE WHEN l.up THEN 'up' WHEN l.admin_up IS FALSE THEN 'disabled' ELSE 'down' END AS \"Status\", l.speed_mbps AS \"Speed Mb\", l.rx_bps AS \"In\", l.tx_bps AS \"Out\", round((100 * GREATEST(l.rx_bps, l.tx_bps) / NULLIF(l.speed_mbps * 1e6, 0))::numeric, 1) AS \"Utilization\", l.rx_bytes AS \"Received\", l.tx_bytes AS \"Sent\", l.errors_ps AS \"Errors/s\", l.poe_w AS \"PoE W\", (SELECT string_agg(COALESCE(n.title, k.b_id) || COALESCE(' ' || NULLIF(k.b_port, ''), ''), ', ') FROM topology_links k LEFT JOIN topology_nodes n ON n.id = k.b_id WHERE k.a_id = l.device_mac AND k.kind <> 'client' AND k.a_port IN (l.name, l.port_idx::text) AND k.last_seen > now() - interval '15 minutes') AS \"Neighbor\" FROM port_latest l WHERE l.device_mac = '$device' ORDER BY l.port_idx"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "In"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bps"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Out"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bps"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Utilization"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Received"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sent"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Errors/s"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "title": "Neighbors (LLDP and uplinks)",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 41,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT CASE WHEN k.a_id = '$device' THEN NULLIF(k.a_port, '') ELSE NULLIF(k.b_port, '') END AS \"Local port\", COALESCE(n.title, CASE WHEN k.a_id = '$device' THEN k.b_id ELSE k.a_id END) AS \"Neighbor\", CASE WHEN k.a_id = '$device' THEN NULLIF(k.b_port, '') ELSE NULLIF(k.a_port, '') END AS \"Neighbor port\", k.kind AS \"Seen via\", k.src AS \"Source\", k.medium AS \"Medium\" FROM topology_links k LEFT JOIN topology_nodes n ON n.id = CASE WHEN k.a_id = '$device' THEN k.b_id ELSE k.a_id END WHERE '$device' IN (k.a_id, k.b_id) AND k.kind <> 'client' AND k.last_seen > now() - interval '15 minutes' ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Routing table",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 41,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT r.prefix AS \"Prefix\", r.protocol AS \"Type\", NULLIF(r.next_hop, '') AS \"Next hop\", r.interface AS \"Interface\", r.metric AS \"Metric\" FROM routes r WHERE r.device_mac = '$device' AND r.last_seen > now() - interval '15 minutes' ORDER BY r.prefix"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Hosts on this device (ARP and MAC tables, connected clients)",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 16,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(c.display_name, a.ip, f.mac) AS \"Host\", COALESCE(a.ip, c.ip) AS \"IP\", f.mac AS \"MAC\", f.port_name AS \"Port\", NULLIF(f.vlan, 0) AS \"VLAN\", c.oui AS \"Vendor\" FROM fdb_entries f LEFT JOIN LATERAL (SELECT ip FROM arp_entries a WHERE a.mac = f.mac ORDER BY last_seen DESC LIMIT 1) a ON true LEFT JOIN clients c ON c.mac = f.mac WHERE f.device_mac = '$device' AND f.last_seen > now() - interval '15 minutes' UNION ALL SELECT c.display_name, c.ip, c.mac, COALESCE(c.sw_port::text, c.essid), c.vlan, c.oui FROM clients c WHERE c.connected AND '$device' IN (c.ap_mac, c.sw_mac) AND NOT EXISTS (SELECT 1 FROM fdb_entries f WHERE f.device_mac = '$device' AND f.mac = c.mac) ORDER BY 4, 1 LIMIT 500"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "title": "Printer supplies",
+      "type": "bargauge",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 49,
+        "w": 8,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT DISTINCT ON (name) name AS metric, level_pct AS value FROM printer_supplies WHERE device_mac = '$device' AND time > now() - interval '1 day' AND level_pct IS NOT NULL ORDER BY name, time DESC"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^value$/",
+          "values": true
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "displayName": "${__data.fields.metric}"
+        },
+        "overrides": []
+      }
+    }
+  ]
+}
