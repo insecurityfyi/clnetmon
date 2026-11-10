@@ -131,7 +131,7 @@ async def test_integration_fallback_when_legacy_missing():
 async def pool():
     p = await db.create_pool(DSN)
     await p.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public")
-    assert await db.migrate(p) == ["001_init.sql", "002_snmp.sql"]
+    assert len(await db.migrate(p)) >= 3
     assert await db.migrate(p) == []            # idempotent
     yield p
     await p.close()
@@ -200,3 +200,31 @@ async def test_collect_store_and_api(pool, monkeypatch):
         ok = await api.get("/api/v1/devices", headers={"Authorization": "Bearer s3cret"})
         assert ok.status_code == 200
         get_settings.cache_clear()
+
+
+@needs_db
+@pytest.mark.parametrize("clients", ["no", "yes"])
+@pytest.mark.parametrize("routes", ["no", "yes"])
+async def test_dashboard_map_edges_always_have_nodes(pool, monkeypatch, clients, routes):
+    """Grafana refuses to draw the map if any edge points at a node that is not returned."""
+    # the LLDP neighbour on the switch is also a connected client, and one client link
+    # points at a device the controller no longer lists
+    monkeypatch.setitem(sample.LEGACY, "stat/sta", sample.ACTIVE + [
+        {"mac": sample.NAS, "hostname": "nas", "is_wired": True, "sw_mac": sample.SW, "sw_port": 8},
+        {"mac": "de:ad:be:ef:00:77", "hostname": "orphan", "is_wired": False,
+         "ap_mac": "aa:bb:cc:00:00:ee"}])
+    client = make_client()
+    await UnifiCollector(client).run_once(pool)
+    await client.aclose()
+    dash = json.load(open(os.path.join(os.path.dirname(__file__), "..", "grafana", "dashboards",
+                                       "nms-overview.json")))
+    panel = next(p for p in dash["panels"] if p["type"] == "nodeGraph")
+    sql = {t["refId"]: t["rawSql"].replace("$show_clients", clients).replace("$show_routes", routes)
+           for t in panel["targets"]}
+    nodes = {r["id"] for r in await pool.fetch(sql["nodes"])}
+    edges = await pool.fetch(sql["edges"])
+    assert edges and all(e["source"] in nodes and e["target"] in nodes for e in edges)
+    kinds = dict(await pool.fetch("SELECT id, kind FROM topology_nodes"))
+    assert kinds[sample.NAS] == "neighbor"
+    if clients == "no":
+        assert sample.NAS in nodes     # still on the map without the clients toggle

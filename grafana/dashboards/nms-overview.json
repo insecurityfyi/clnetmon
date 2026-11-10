@@ -7,7 +7,7 @@
     "snmp"
   ],
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "editable": true,
   "refresh": "1m",
   "time": {
@@ -335,7 +335,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT e.id, e.source, e.target, e.mainstat, e.kind AS detail__kind, NULLIF(e.a_port, '') AS detail__source_port, NULLIF(e.b_port, '') AS detail__target_port FROM topology_edges e WHERE ('$show_clients' = 'yes' OR e.kind <> 'client') AND ('$show_routes' = 'yes' OR e.kind <> 'route')"
+          "rawSql": "SELECT e.id, e.source, e.target, e.mainstat, e.kind AS detail__kind, NULLIF(e.a_port, '') AS detail__source_port, NULLIF(e.b_port, '') AS detail__target_port FROM topology_edges e WHERE ('$show_clients' = 'yes' OR e.kind <> 'client') AND ('$show_routes' = 'yes' OR e.kind <> 'route') AND (SELECT count(*) FROM topology_nodes n WHERE n.id IN (e.source, e.target) AND ('$show_clients' = 'yes' OR n.kind <> 'client') AND ('$show_routes' = 'yes' OR n.kind <> 'network')) = 2"
         }
       ]
     },
