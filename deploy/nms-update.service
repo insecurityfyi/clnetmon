@@ -1,0 +1,7 @@
+[Unit]
+Description=Pull and deploy the latest NMS code
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/nms/deploy/update.sh

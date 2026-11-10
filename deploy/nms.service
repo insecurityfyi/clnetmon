@@ -1,0 +1,20 @@
+[Unit]
+Description=Collaborative NMS (collectors + API)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+User=nms
+Group=nms
+WorkingDirectory=/opt/nms
+EnvironmentFile=/etc/nms/nms.env
+ExecStart=/opt/nms/.venv/bin/nms serve
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

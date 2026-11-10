@@ -1,0 +1,533 @@
+{
+  "uid": "nms-overview",
+  "title": "NMS overview",
+  "tags": [
+    "nms",
+    "unifi"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "templating": {
+    "list": [
+      {
+        "name": "show_clients",
+        "label": "Clients on map",
+        "type": "custom",
+        "query": "no,yes",
+        "current": {
+          "text": "no",
+          "value": "no",
+          "selected": true
+        },
+        "options": [
+          {
+            "text": "no",
+            "value": "no",
+            "selected": true
+          },
+          {
+            "text": "yes",
+            "value": "yes",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "show_routes",
+        "label": "Routes on map",
+        "type": "custom",
+        "query": "no,yes",
+        "current": {
+          "text": "yes",
+          "value": "yes",
+          "selected": true
+        },
+        "options": [
+          {
+            "text": "no",
+            "value": "no",
+            "selected": false
+          },
+          {
+            "text": "yes",
+            "value": "yes",
+            "selected": true
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Devices online",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT count(*) FROM devices WHERE state = 'online'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Devices not online",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT count(*) FROM devices WHERE state IS DISTINCT FROM 'online'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Clients connected",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT count(*) FROM clients WHERE connected"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Wireless clients",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT count(*) FROM clients WHERE connected AND NOT is_wired"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Wired clients",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT count(*) FROM clients WHERE connected AND is_wired"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Seconds since last poll",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT round(extract(epoch FROM now() - max(finished_at))) FROM collector_runs WHERE ok"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 7,
+      "title": "Network map (uplinks, LLDP neighbors, routes)",
+      "type": "nodeGraph",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 16
+      },
+      "targets": [
+        {
+          "refId": "nodes",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT id, title, subtitle, mainstat, kind AS detail__kind FROM topology_nodes WHERE ('$show_clients' = 'yes' OR kind <> 'client') AND ('$show_routes' = 'yes' OR kind <> 'network')"
+        },
+        {
+          "refId": "edges",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT e.id, e.source, e.target, e.mainstat, e.kind AS detail__kind, NULLIF(e.a_port, '') AS detail__source_port, NULLIF(e.b_port, '') AS detail__target_port FROM topology_edges e WHERE ('$show_clients' = 'yes' OR e.kind <> 'client') AND ('$show_routes' = 'yes' OR e.kind <> 'route')"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Wireless clients per AP",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroup(m.time, $__interval) AS time, COALESCE(d.name, m.ap_mac) AS metric, count(DISTINCT m.mac) AS value FROM client_metrics m LEFT JOIN devices d ON d.mac = m.ap_mac WHERE $__timeFilter(m.time) AND m.ap_mac IS NOT NULL GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Channel utilization by radio",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroup(r.time, $__interval) AS time, COALESCE(d.name, r.device_mac) || ' ' || COALESCE(r.band, r.radio) || ' GHz' AS metric, avg(r.util_total) AS value FROM radio_metrics r LEFT JOIN devices d ON d.mac = r.device_mac WHERE $__timeFilter(r.time) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Connected clients",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT c.display_name AS \"Client\", c.ip AS \"IP\", c.mac AS \"MAC\", CASE WHEN c.is_wired THEN 'wired' ELSE c.essid END AS \"SSID\", COALESCE(d.name, c.ap_mac, c.sw_mac) AS \"Connected to\", c.sw_port AS \"Port\", m.band AS \"Band\", m.channel AS \"Ch\", m.signal_dbm AS \"Signal dBm\", m.rx_rate_kbps / 1000 AS \"Rx Mb/s\", m.tx_rate_kbps / 1000 AS \"Tx Mb/s\", m.satisfaction AS \"Experience\", c.network AS \"Network\", c.oui AS \"Vendor\" FROM clients c LEFT JOIN devices d ON d.mac = COALESCE(c.ap_mac, c.sw_mac) LEFT JOIN LATERAL (SELECT * FROM client_metrics m WHERE m.mac = c.mac AND m.time > now() - interval '10 minutes' ORDER BY time DESC LIMIT 1) m ON true WHERE c.connected ORDER BY m.signal_dbm NULLS LAST"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Devices",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 14,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT d.name AS \"Device\", d.model AS \"Model\", d.ip AS \"IP\", d.state AS \"State\", d.version AS \"Firmware\", d.upgradable AS \"Update available\", m.cpu_pct AS \"CPU %\", m.mem_pct AS \"Mem %\", m.num_clients AS \"Clients\", round(d.uptime_s / 86400.0, 1) AS \"Uptime days\" FROM devices d LEFT JOIN LATERAL (SELECT * FROM device_metrics m WHERE m.mac = d.mac ORDER BY time DESC LIMIT 1) m ON true ORDER BY d.name"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Routing table",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "nms-pg"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 38,
+        "w": 10,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "nms-pg"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT r.prefix AS \"Prefix\", r.protocol AS \"Type\", NULLIF(r.next_hop, '') AS \"Next hop\", r.interface AS \"Interface\", n.name AS \"Network\", n.vlan AS \"VLAN\" FROM routes r LEFT JOIN networks n ON n.subnet = r.prefix WHERE r.last_seen > now() - interval '15 minutes' ORDER BY r.prefix"
+        }
+      ]
+    }
+  ]
+}
