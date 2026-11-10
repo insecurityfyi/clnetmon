@@ -40,7 +40,8 @@ main() {
         fi
     done
     [[ $changed -eq 1 ]] && systemctl daemon-reload
-    ln -sfn "$APP_DIR/deploy/nmsupdate" /usr/local/bin/nmsupdate
+    ln -sfn "$APP_DIR/deploy/nmsupdate" /usr/bin/nmsupdate
+    rm -f /usr/local/bin/nmsupdate
 
     systemctl restart nms.service
     for _ in $(seq 1 15); do
