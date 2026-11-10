@@ -69,9 +69,10 @@ echo "==> deploy key"
 KEY="$ETC_DIR/deploy_key"
 if [[ ! -f "$KEY" ]]; then
     ssh-keygen -q -t ed25519 -N "" -C "nms-deploy@$(hostname -s)" -f "$KEY"
-    chown nms:nms "$KEY" "$KEY.pub"
-    chmod 600 "$KEY"
 fi
+# also covers a key created by hand before the first run (see README)
+chown nms:nms "$KEY" "$KEY.pub"
+chmod 600 "$KEY"
 touch "$ETC_DIR/known_hosts" && chown nms:nms "$ETC_DIR/known_hosts"
 SSH_CMD="ssh -i $KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$ETC_DIR/known_hosts"
 

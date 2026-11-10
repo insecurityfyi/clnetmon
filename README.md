@@ -57,9 +57,24 @@ dashboard (node-graph panel, with toggles for clients and routes).
 
 ## Install on CentOS Stream 9
 
+The repo is private, so the server needs a deploy key before it can clone. Create it
+first, add the printed public key to the repo (Settings > Deploy keys, write access off),
+then clone and run the installer:
+
 ```
-sudo bash install.sh git@github.com:<owner>/<repo>.git
+sudo dnf -y install git
+sudo mkdir -p /etc/nms
+sudo ssh-keygen -t ed25519 -N "" -f /etc/nms/deploy_key
+sudo cat /etc/nms/deploy_key.pub        # add this to the repo's deploy keys
+
+sudo GIT_SSH_COMMAND="ssh -i /etc/nms/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+    git clone git@github.com:insecurityfyi/clnetmon.git /tmp/clnetmon
+sudo bash /tmp/clnetmon/deploy/install.sh git@github.com:insecurityfyi/clnetmon.git
 ```
+
+The installer reuses that key, so just press Enter when it asks about the deploy key.
+Alternatively, copy `deploy/install.sh` to the server by any other means and run it; it
+creates the key itself.
 
 The script prints a deploy key to add to the repo (read-only), then installs Python 3.12,
 PostgreSQL 16 and Grafana and enables the services. Afterwards:
