@@ -88,6 +88,8 @@ PostgreSQL 16 and Grafana and enables the services. Afterwards:
 ## Operate
 
 ```
+nmsupdate                                  # pull the latest code and redeploy now
+nmsupdate --force                          # reinstall and restart even if unchanged
 journalctl -u nms -f                       # collector + API log
 journalctl -u nms-update                   # deploy log
 curl -s localhost:8080/api/v1/collectors   # last run of each collector, with warnings

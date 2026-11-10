@@ -102,6 +102,7 @@ install -m 644 "$APP_DIR/deploy/nms.service" "$APP_DIR/deploy/nms-update.service
     "$APP_DIR/deploy/nms-update.timer" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now nms.service nms-update.timer
+ln -sfn "$APP_DIR/deploy/nmsupdate" /usr/local/bin/nmsupdate
 
 echo "==> Grafana"
 cat > /etc/grafana/provisioning/datasources/nms.yaml <<EOF
@@ -144,7 +145,7 @@ fi
 
 cat <<EOF
 
-Done.
+Done. To pull and deploy the latest code at any time, run:  nmsupdate
 
 Next:
   1. Edit $ETC_DIR/nms.env  -> set NMS_UNIFI_URL and NMS_UNIFI_API_KEY

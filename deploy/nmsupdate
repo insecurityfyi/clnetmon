@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# One-word update: pull the latest code and redeploy now instead of waiting for the timer.
+# Installed on the PATH as /usr/local/bin/nmsupdate. Asks for sudo if not run as root.
+if [[ $EUID -ne 0 ]]; then
+    exec sudo "$(readlink -f "$0")" "$@"
+fi
+exec /bin/bash /opt/nms/deploy/update.sh "$@"
